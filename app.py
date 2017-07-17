@@ -123,7 +123,7 @@ app.layout = html.Div(
                 dcc.Dropdown(
                     id='ticker_dropdown',
                     options=tickers,
-                    value='AAPL',
+                    value='SPY',
                 ),
             ],
                 className='six columns',
@@ -210,7 +210,7 @@ app.layout = html.Div(
                             placeholder='Risk-free rate',
                             type='number',
                             value='0.0',
-                            style={'width': '120'}
+                            style={'width': '125'}
                         )
                     ],
                         style={'display': 'inline-block'}
@@ -222,7 +222,7 @@ app.layout = html.Div(
                             placeholder='Dividend interest rate',
                             type='number',
                             value='0.0',
-                            style={'width': '120'}
+                            style={'width': '125'}
                         )
                     ],
                         style={'display': 'inline-block'}
@@ -249,6 +249,7 @@ app.layout = html.Div(
                     id='graph_toggles',
                     options=[
                         {'label': 'Flat shading', 'value': 'flat'},
+                        {'label': 'Discrete contour', 'value': 'discrete'},
                         {'label': 'Lock camera', 'value': 'lock'}
                     ],
                     values=['flat', 'lock'],
@@ -262,24 +263,31 @@ app.layout = html.Div(
         ),
         html.Hr(style={'margin': '0', 'margin-bottom': '10'}),
         html.Div([
-            dcc.Graph(id='iv_surface', style={'height': '60vh'}),
+            dcc.Graph(id='iv_surface', style={'max-height': '600', 'height': '60vh'}),
         ],
             className='row',
             style={'margin-bottom': '20'}
         ),
         html.Div([
             html.Div([
-                dcc.Graph(id='iv_heatmap', style={'height': '35vh'}),
+                dcc.Graph(id='iv_heatmap', style={'max-height': '350', 'height': '35vh'}),
             ],
-                className='eight columns'
+                className='five columns'
             ),
             html.Div([
-                dcc.Graph(id='iv_smiles', style={'height': '35vh'}),
+                dcc.Graph(id='iv_scatter', style={'max-height': '350', 'height': '35vh'}),
             ],
-                className='four columns'
+                className='seven columns'
             )
         ],
             className='row'
+        ),
+        # Temporary hack for live dataframe caching
+        # 'hidden' set to 'loaded' triggers next callback
+        html.P(
+            hidden='',
+            id='raw_container',
+            style={'display': 'none'}
         ),
         html.P(
             hidden='',
@@ -306,9 +314,9 @@ app.layout = html.Div(
               [Input('ticker_dropdown', 'value')])
 def cache_raw_data(ticker):
 
-    global filtered_data
-    filtered_data = df[df[2] > 0.0001]  # Filter invalid calculations with abnormally low IV
-    print('Loaded filtered data')
+    global raw_data
+    raw_data = get_raw_data(ticker)
+    print('Loaded raw data')
 
     return 'loaded'
 
@@ -329,34 +337,37 @@ def cache_filtered_data(hidden, call_or_put, market,
                         calculate_iv, trading_calendar,
                         rf_interest_rate, dividend_rate):
 
-    if call_or_put == 'call':
-        s, p, i = get_filtered_data(raw_data, calculate_iv=calculate_iv,
-                                    call=True, put=False,
-                                    above_below=float(above_below),
-                                    volume_threshold=float(volume_threshold),
-                                    rf_interest_rate=float(rf_interest_rate),
-                                    dividend_rate=float(dividend_rate),
-                                    trading_calendar=trading_calendar,
-                                    market=market)
-    else:
-        s, p, i = get_filtered_data(raw_data, calculate_iv=calculate_iv,
-                                    call=False, put=True,
-                                    above_below=float(above_below),
-                                    volume_threshold=float(volume_threshold),
-                                    rf_interest_rate=float(rf_interest_rate),
-                                    dividend_rate=float(dividend_rate),
-                                    trading_calendar=trading_calendar,
-                                    market=market)
+    if hidden == 'loaded':
 
-    df = pd.DataFrame([s, p, i]).T
+        if call_or_put == 'call':
+            s, p, i = get_filtered_data(raw_data, calculate_iv=calculate_iv,
+                                        call=True, put=False,
+                                        above_below=float(above_below),
+                                        volume_threshold=float(volume_threshold),
+                                        rf_interest_rate=float(rf_interest_rate),
+                                        dividend_rate=float(dividend_rate),
+                                        trading_calendar=trading_calendar,
+                                        market=market)
+        else:
+            s, p, i = get_filtered_data(raw_data, calculate_iv=calculate_iv,
+                                        call=False, put=True,
+                                        above_below=float(above_below),
+                                        volume_threshold=float(volume_threshold),
+                                        rf_interest_rate=float(rf_interest_rate),
+                                        dividend_rate=float(dividend_rate),
+                                        trading_calendar=trading_calendar,
+                                        market=market)
 
-    global filtered_data
-    filtered_data = df[df[2] > 0.0001]  # Filter invalid calculations with abnormally low IV
-    print('Loaded filtered data')
+        df = pd.DataFrame([s, p, i]).T
 
-    return 'loaded'
+        global filtered_data
+        filtered_data = df[df[2] > 0.0001]  # Filter invalid calculations with abnormally low IV
+        print('Loaded filtered data')
+
+        return 'loaded'
 
 
+# Make main surface plot
 @app.callback(Output('iv_surface', 'figure'),
               [Input('filtered_container', 'hidden'),
                Input('ticker_dropdown', 'value'),
@@ -365,7 +376,7 @@ def cache_filtered_data(hidden, call_or_put, market,
               [State('graph_toggles', 'values'),
                State('iv_surface', 'relayoutData')])
 def make_surface_plot(hidden, ticker, log_selector, graph_toggles,
-                     graph_toggles_state, iv_surface_layout):
+                      graph_toggles_state, iv_surface_layout):
 
     if hidden == 'loaded':
 
@@ -375,6 +386,7 @@ def make_surface_plot(hidden, ticker, log_selector, graph_toggles,
             flat_shading = False
 
         trace1 = {
+            "type": "mesh3d",
             'x': filtered_data[0],
             'y': filtered_data[1],
             'z': filtered_data[2],
@@ -384,7 +396,6 @@ def make_surface_plot(hidden, ticker, log_selector, graph_toggles,
                 [0, "rgb(244,236,21)"], [0.3, "rgb(249,210,41)"], [0.4, "rgb(134,191,118)"], [
                     0.5, "rgb(37,180,167)"], [0.65, "rgb(17,123,215)"], [1, "rgb(54,50,153)"],
             ],
-            "flatshading": flat_shading,
             "lighting": {
                 "ambient": 1,
                 "diffuse": 0.9,
@@ -392,19 +403,19 @@ def make_surface_plot(hidden, ticker, log_selector, graph_toggles,
                 "roughness": 0.9,
                 "specular": 2
             },
-            "opacity": 1,
+            "flatshading": flat_shading,
             "reversescale": True,
-            "type": "mesh3d",
         }
 
         layout = {
-            "title": "{} vol surface | {}".format(ticker, str(dt.datetime.now())),
+            "title": "{} Volatility Surface | {}".format(ticker, str(dt.datetime.now())),
             'margin': {
-                'l': 5,
-                'r': 5,
-                'b': 5,
-                't': 50,
+                'l': 10,
+                'r': 10,
+                'b': 10,
+                't': 60,
             },
+            'paper_bgcolor': '#FAFAFA',
             "hovermode": "closest",
             "scene": {
                 "aspectmode": "manual",
@@ -416,24 +427,16 @@ def make_surface_plot(hidden, ticker, log_selector, graph_toggles,
                 'camera': {
                     'up': {'x': 0, 'y': 0, 'z': 1},
                     'center': {'x': 0, 'y': 0, 'z': 0},
-                    'eye': {'x': 1, 'y': 1, 'z': 1},
+                    'eye': {'x': 2, 'y': 2, 'z': 2},
                 },
                 "xaxis": {
-                    "rangemode": "normal",
-                    "tick0": 0,
-                    "tickmode": "auto",
                     "title": "Strike ($)",
                 },
                 "yaxis": {
-                    "rangemode": "normal",
-                    "tick0": 0,
-                    "tickmode": "auto",
                     "title": "Expiry (days)",
                 },
                 "zaxis": {
-                    "rangemode": "normal",
-                    "tick0": 0,
-                    "tickmode": "auto",
+                    "rangemode": "tozero",
                     "title": "IV (σ)",
                     "type": log_selector
                 }
@@ -447,6 +450,137 @@ def make_surface_plot(hidden, ticker, log_selector, graph_toggles,
             layout['scene']['camera']['up'] = up
             layout['scene']['camera']['center'] = center
             layout['scene']['camera']['eye'] = eye
+
+        data = [trace1]
+        figure = dict(data=data, layout=layout)
+        return figure
+
+
+# Make side heatmap plot
+@app.callback(Output('iv_heatmap', 'figure'),
+              [Input('filtered_container', 'hidden'),
+               Input('ticker_dropdown', 'value'),
+               Input('log_selector', 'value'),
+               Input('graph_toggles', 'values')],
+              [State('graph_toggles', 'values'),
+               State('iv_heatmap', 'relayoutData')])
+def make_surface_plot(hidden, ticker, log_selector, graph_toggles,
+                      graph_toggles_state, iv_heatmap_layout):
+
+    if hidden == 'loaded':
+
+        if 'discrete' in graph_toggles:
+            shading = 'contour'
+        else:
+            shading = 'heatmap'
+
+        trace1 = {
+            "type": "contour",
+            'x': filtered_data[0],
+            'y': filtered_data[1],
+            'z': filtered_data[2],
+            'connectgaps': True,
+            'line': {'smoothing': '1'},
+            'contours': {'coloring': shading},
+            'autocolorscale': False,
+            "colorscale": [
+                [0, "rgb(244,236,21)"], [0.3, "rgb(249,210,41)"], [0.4, "rgb(134,191,118)"], [
+                    0.5, "rgb(37,180,167)"], [0.65, "rgb(17,123,215)"], [1, "rgb(54,50,153)"],
+            ],
+            # Add colorscale log
+            "reversescale": True,
+        }
+
+        layout = {
+            'margin': {
+                'l': 60,
+                'r': 10,
+                'b': 60,
+                't': 10,
+            },
+            'paper_bgcolor': '#FAFAFA',
+            "hovermode": "closest",
+            "xaxis": {
+                "title": "Strike ($)",
+            },
+            "yaxis": {
+                "title": "Expiry (days)",
+            },
+        }
+
+        # if (iv_heatmap_layout is not None and 'lock' in graph_toggles_state):
+        #     up = iv_surface_layout['scene']['up']
+        #     center = iv_surface_layout['scene']['center']
+        #     eye = iv_surface_layout['scene']['eye']
+        #     layout['scene']['camera']['up'] = up
+        #     layout['scene']['camera']['center'] = center
+        #     layout['scene']['camera']['eye'] = eye
+
+        data = [trace1]
+        figure = dict(data=data, layout=layout)
+        return figure
+
+
+# Make side scatter plot
+@app.callback(Output('iv_scatter', 'figure'),
+              [Input('filtered_container', 'hidden'),
+               Input('ticker_dropdown', 'value'),
+               Input('log_selector', 'value'),
+               Input('graph_toggles', 'values')],
+              [State('graph_toggles', 'values'),
+               State('iv_scatter', 'relayoutData')])
+def make_scatter_plot(hidden, ticker, log_selector, graph_toggles,
+                      graph_toggles_state, iv_heatmap_layout):
+
+    if hidden == 'loaded':
+
+        if 'discrete' in graph_toggles:
+            shading = 'contour'
+        else:
+            shading = 'heatmap'
+
+        trace1 = {
+            'x': filtered_data[1],
+            'y': filtered_data[2],
+            # 'connectgaps': True,
+            # 'line': {'smoothing': '1'},
+            # 'contours': {'coloring': shading},
+            # 'autocolorscale': False,
+            # "colorscale": [
+            #     [0, "rgb(244,236,21)"], [0.3, "rgb(249,210,41)"], [0.4, "rgb(134,191,118)"], [
+            #         0.5, "rgb(37,180,167)"], [0.65, "rgb(17,123,215)"], [1, "rgb(54,50,153)"],
+            # ],
+            # # Add colorscale log
+            # "reversescale": True,
+            'mode': 'markers',
+            "type": "scatter",
+        }
+
+        layout = {
+            'margin': {
+                'l': 60,
+                'r': 10,
+                'b': 60,
+                't': 10,
+            },
+            'paper_bgcolor': '#FAFAFA',
+            "hovermode": "closest",
+            "xaxis": {
+                "title": "Expiry (days)",
+            },
+            "yaxis": {
+                "rangemode": "tozero",
+                "title": "IV (σ)",
+            },
+        }
+
+        # if (iv_heatmap_layout is not None and 'lock' in graph_toggles_state):
+        #     up = iv_surface_layout['scene']['up']
+        #     center = iv_surface_layout['scene']['center']
+        #     eye = iv_surface_layout['scene']['eye']
+        #     layout['scene']['camera']['up'] = up
+        #     layout['scene']['camera']['center'] = center
+        #     layout['scene']['camera']['eye'] = eye
 
         data = [trace1]
         figure = dict(data=data, layout=layout)

@@ -43,13 +43,10 @@ def get_raw_data(ticker):
 
 
 # Get volatility matrix
-def get_filtered_data(ticker, calculate_iv=True, call=True, put=False,
+def get_filtered_data(data, calculate_iv=True, call=True, put=False,
                       volume_threshold=1, above_below=False,
                       rf_interest_rate=0.0, dividend_rate=0.0,
                       trading_calendar=True, market=True):
-
-    tape = Options(ticker, 'yahoo')
-    data = tape.get_all_data()
 
     if call and put:
         raise Exception('Must specify either call or put.')
