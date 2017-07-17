@@ -1,5 +1,3 @@
-import datetime as dt
-
 from pandas.tseries.holiday import (AbstractHolidayCalendar, Holiday,
                                     USMartinLutherKingJr, USPresidentsDay,
                                     GoodFriday, USMemorialDay,

@@ -11,12 +11,13 @@ from dash.dependencies import Input, Output, State
 import dash_core_components as dcc
 import dash_html_components as html
 
-from data_fetcher import get_time_delta, get_raw_data, get_filtered_data
+from core import get_time_delta, get_volatility_matrix
 
 
 # Setup app
 server = flask.Flask(__name__)
 server.secret_key = os.environ.get('secret_key', 'secret')
+
 app = dash.Dash(__name__, server=server, url_base_pathname='/dash/gallery/volatility-surface', csrf_protect=False)
 
 external_css = ["https://fonts.googleapis.com/css?family=Overpass:300,300i",
@@ -204,25 +205,25 @@ app.layout = html.Div(
                 ),
                 html.Div([
                     html.Div([
-                        html.Label('Risk-free rate (%)'),
+                        html.Label('Risk-free rate'),
                         dcc.Input(
                             id='rf_input',
                             placeholder='Risk-free rate',
                             type='number',
                             value='0.0',
-                            style={'width': '120'}
+                            style={'width': '100'}
                         )
                     ],
                         style={'display': 'inline-block'}
                     ),
                     html.Div([
-                        html.Label('Dividend rate (%)'),
+                        html.Label('Dividend rate'),
                         dcc.Input(
                             id='div_input',
                             placeholder='Dividend interest rate',
                             type='number',
                             value='0.0',
-                            style={'width': '120'}
+                            style={'width': '100'}
                         )
                     ],
                         style={'display': 'inline-block'}
@@ -280,13 +281,9 @@ app.layout = html.Div(
             )
         ],
             className='row'
-        ),
-        html.P(
-            hidden='',
-            id='filtered_container',
-            style={'display': 'none'}
         )
     ],
+    # className='ten columns offset-by-one',
     style={
         'width': '85%',
         'max-width': '1200',
@@ -296,26 +293,11 @@ app.layout = html.Div(
         'background-color': '#F3F3F3',
         'padding': '40',
         'padding-top': '20',
-        'padding-bottom': '20',
     },
 )
 
-
-# Cache raw data
-@app.callback(Output('raw_container', 'hidden'),
-              [Input('ticker_dropdown', 'value')])
-def cache_raw_data(ticker):
-
-    global filtered_data
-    filtered_data = df[df[2] > 0.0001]  # Filter invalid calculations with abnormally low IV
-    print('Loaded filtered data')
-
-    return 'loaded'
-
-
-# Cache filtered data
-@app.callback(Output('filtered_container', 'hidden'),
-              [Input('raw_container', 'hidden'),
+@app.callback(Output('iv_surface', 'figure'),
+              [Input('ticker_dropdown', 'value'),
                Input('option_selector', 'value'),
                Input('market_selector', 'value'),
                Input('price_slider', 'value'),
@@ -323,134 +305,123 @@ def cache_raw_data(ticker):
                Input('iv_selector', 'value'),
                Input('calendar_selector', 'value'),
                Input('rf_input', 'value'),
-               Input('div_input', 'value')])  # To be split
-def cache_filtered_data(hidden, call_or_put, market,
-                        above_below, volume_threshold,
-                        calculate_iv, trading_calendar,
-                        rf_interest_rate, dividend_rate):
-
-    if call_or_put == 'call':
-        s, p, i = get_filtered_data(raw_data, calculate_iv=calculate_iv,
-                                    call=True, put=False,
-                                    above_below=float(above_below),
-                                    volume_threshold=float(volume_threshold),
-                                    rf_interest_rate=float(rf_interest_rate),
-                                    dividend_rate=float(dividend_rate),
-                                    trading_calendar=trading_calendar,
-                                    market=market)
-    else:
-        s, p, i = get_filtered_data(raw_data, calculate_iv=calculate_iv,
-                                    call=False, put=True,
-                                    above_below=float(above_below),
-                                    volume_threshold=float(volume_threshold),
-                                    rf_interest_rate=float(rf_interest_rate),
-                                    dividend_rate=float(dividend_rate),
-                                    trading_calendar=trading_calendar,
-                                    market=market)
-
-    df = pd.DataFrame([s, p, i]).T
-
-    global filtered_data
-    filtered_data = df[df[2] > 0.0001]  # Filter invalid calculations with abnormally low IV
-    print('Loaded filtered data')
-
-    return 'loaded'
-
-
-@app.callback(Output('iv_surface', 'figure'),
-              [Input('filtered_container', 'hidden'),
-               Input('ticker_dropdown', 'value'),
+               Input('div_input', 'value'),  # To be split
                Input('log_selector', 'value'),
                Input('graph_toggles', 'values')],
               [State('graph_toggles', 'values'),
                State('iv_surface', 'relayoutData')])
-def make_surface_plot(hidden, ticker, log_selector, graph_toggles,
-                     graph_toggles_state, iv_surface_layout):
+def make_surface_plot(ticker, call_or_put, market,
+                      above_below, volume_threshold,
+                      calculate_iv, trading_calendar,
+                      rf_interest_rate, dividend_rate,
+                      log_selector, graph_toggles,
+                      graph_toggles_state, iv_surface_layout):
 
-    if hidden == 'loaded':
+    if call_or_put == 'call':
+        s, p, i = get_volatility_matrix(ticker, calculate_iv=calculate_iv,
+                                        call=True, put=False,
+                                        above_below=float(above_below),
+                                        volume_threshold=float(volume_threshold),
+                                        rf_interest_rate=float(rf_interest_rate),
+                                        dividend_rate=float(dividend_rate),
+                                        trading_calendar=trading_calendar,
+                                        market=market)
+    else:
+        s, p, i = get_volatility_matrix(ticker, calculate_iv=calculate_iv,
+                                        call=False, put=True,
+                                        above_below=float(above_below),
+                                        volume_threshold=float(volume_threshold),
+                                        rf_interest_rate=float(rf_interest_rate),
+                                        dividend_rate=float(dividend_rate),
+                                        trading_calendar=trading_calendar,
+                                        market=market)
 
-        if 'flat' in graph_toggles:
-            flat_shading = True
-        else:
-            flat_shading = False
+    if 'flat' in graph_toggles:
+        flat_shading = True
+    else:
+        flat_shading = False
 
-        trace1 = {
-            'x': filtered_data[0],
-            'y': filtered_data[1],
-            'z': filtered_data[2],
-            'intensity': filtered_data[2],
-            'autocolorscale': False,
-            "colorscale": [
-                [0, "rgb(244,236,21)"], [0.3, "rgb(249,210,41)"], [0.4, "rgb(134,191,118)"], [
-                    0.5, "rgb(37,180,167)"], [0.65, "rgb(17,123,215)"], [1, "rgb(54,50,153)"],
-            ],
-            "flatshading": flat_shading,
-            "lighting": {
-                "ambient": 1,
-                "diffuse": 0.9,
-                "fresnel": 0.5,
-                "roughness": 0.9,
-                "specular": 2
+    df2 = pd.DataFrame([s, p, i]).T
+    df2f = df2[df2[2] > 0.0001]
+
+    trace1 = {
+        'x': df2f[0],
+        'y': df2f[1],
+        'z': df2f[2],
+        'intensity': df2f[2],
+        'autocolorscale': False,
+        "colorscale": [
+            [0, "rgb(244,236,21)"], [0.3, "rgb(249,210,41)"], [0.4, "rgb(134,191,118)"], [
+                0.5, "rgb(37,180,167)"], [0.65, "rgb(17,123,215)"], [1, "rgb(54,50,153)"],
+        ],
+        "flatshading": flat_shading,
+        "lighting": {
+            "ambient": 1,
+            "diffuse": 0.9,
+            "fresnel": 0.5,
+            "roughness": 0.9,
+            "specular": 2
+        },
+        "opacity": 1,
+        "reversescale": True,
+        "type": "mesh3d",
+    }
+
+    layout = {
+        "title": "{} vol surface | {}".format(ticker, str(dt.datetime.now())),
+        'margin': {
+            'l': 5,
+            'r': 5,
+            'b': 5,
+            't': 50,
+        },
+        "hovermode": "closest",
+        "scene": {
+            "aspectmode": "manual",
+            "aspectratio": {
+                "x": 2,
+                "y": 2,
+                "z": 1
             },
-            "opacity": 1,
-            "reversescale": True,
-            "type": "mesh3d",
-        }
-
-        layout = {
-            "title": "{} vol surface | {}".format(ticker, str(dt.datetime.now())),
-            'margin': {
-                'l': 5,
-                'r': 5,
-                'b': 5,
-                't': 50,
+            'camera': {
+                'up': {'x': 0, 'y': 0, 'z': 1},
+                'center': {'x': 0, 'y': 0, 'z': 0},
+                'eye': {'x': 1, 'y': 1, 'z': 1},
             },
-            "hovermode": "closest",
-            "scene": {
-                "aspectmode": "manual",
-                "aspectratio": {
-                    "x": 2,
-                    "y": 2,
-                    "z": 1
-                },
-                'camera': {
-                    'up': {'x': 0, 'y': 0, 'z': 1},
-                    'center': {'x': 0, 'y': 0, 'z': 0},
-                    'eye': {'x': 1, 'y': 1, 'z': 1},
-                },
-                "xaxis": {
-                    "rangemode": "normal",
-                    "tick0": 0,
-                    "tickmode": "auto",
-                    "title": "Strike ($)",
-                },
-                "yaxis": {
-                    "rangemode": "normal",
-                    "tick0": 0,
-                    "tickmode": "auto",
-                    "title": "Expiry (days)",
-                },
-                "zaxis": {
-                    "rangemode": "normal",
-                    "tick0": 0,
-                    "tickmode": "auto",
-                    "title": "IV (σ)",
-                    "type": log_selector
-                }
+            "xaxis": {
+                "rangemode": "normal",
+                "tick0": 0,
+                "tickmode": "auto",
+                "title": "Strike ($)",
             },
-        }
+            "yaxis": {
+                "rangemode": "normal",
+                "tick0": 0,
+                "tickmode": "auto",
+                "title": "Expiry (days)",
+            },
+            "zaxis": {
+                "rangemode": "normal",
+                "tick0": 0,
+                "tickmode": "auto",
+                "title": "IV (σ)",
+                "type": log_selector
+            }
+        },
+    }
 
-        if (iv_surface_layout is not None and 'lock' in graph_toggles_state):
-            up = iv_surface_layout['scene']['up']
-            center = iv_surface_layout['scene']['center']
-            eye = iv_surface_layout['scene']['eye']
-            layout['scene']['camera']['up'] = up
-            layout['scene']['camera']['center'] = center
-            layout['scene']['camera']['eye'] = eye
+    if (iv_surface_layout is not None and 'lock' in graph_toggles_state):
+        up = iv_surface_layout['scene']['up']
+        center = iv_surface_layout['scene']['center']
+        eye = iv_surface_layout['scene']['eye']
+        layout['scene']['camera']['up'] = up
+        layout['scene']['camera']['center'] = center
+        layout['scene']['camera']['eye'] = eye
 
-        data = [trace1]
-        figure = dict(data=data, layout=layout)
-        return figure
+
+    data = [trace1]
+    figure = dict(data=data, layout=layout)
+    return figure
 
 
 # In[]:

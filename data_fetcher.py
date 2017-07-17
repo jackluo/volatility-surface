@@ -35,11 +35,21 @@ def get_time_delta(today, date_list, trading_calendar=True):
     return delta_list, normalized
 
 
+# Get tape
+def get_raw_data(ticker):
+    tape = Options(ticker, 'yahoo')
+    data = tape.get_all_data()
+    return data
+
+
 # Get volatility matrix
-def get_volatility_matrix(ticker, calculate_iv=True, call=True, put=False,
-                          volume_threshold=1, above_below=False,
-                          rf_interest_rate=0.0, dividend_rate=0.0,
-                          trading_calendar=True):
+def get_filtered_data(ticker, calculate_iv=True, call=True, put=False,
+                      volume_threshold=1, above_below=False,
+                      rf_interest_rate=0.0, dividend_rate=0.0,
+                      trading_calendar=True, market=True):
+
+    tape = Options(ticker, 'yahoo')
+    data = tape.get_all_data()
 
     if call and put:
         raise Exception('Must specify either call or put.')
@@ -52,10 +62,6 @@ def get_volatility_matrix(ticker, calculate_iv=True, call=True, put=False,
         flag = 'p'
         typ = 'put'
 
-    # Fetch options data
-    tape = Options(ticker, 'yahoo')
-    data = tape.get_all_data()
-
     if not above_below:
         above_below = 1E9  # Very large number, good enough for our purposes
 
@@ -67,13 +73,14 @@ def get_volatility_matrix(ticker, calculate_iv=True, call=True, put=False,
               & (data.index.get_level_values('Strike') < (underlying + above_below + 1))
               & (data.index.get_level_values('Strike') > (underlying - above_below - 1))]
 
-    df
-
     # Get columns
     if typ == 'call':
         premiums = df['Ask']  # Always assume user wants to get filled price
     else:
-        preimums = df['Bid']
+        premiums = df['Bid']
+
+    if not market:
+        premiums = df['Last'] # Last executed price vs Bid/Ask price
 
     strikes = df.index.get_level_values('Strike').values
     expiries = df.index.get_level_values('Expiry').to_pydatetime()
@@ -82,7 +89,7 @@ def get_volatility_matrix(ticker, calculate_iv=True, call=True, put=False,
     ivs = df['IV'].values
 
     assert len(premiums) == len(strikes)
-    assert len(strikes) == len(time_to_expirations)
+    assert len(strikes) == len(time_to_expirations)  # Make sure nothing thows up
 
     if calculate_iv:
 
@@ -94,8 +101,8 @@ def get_volatility_matrix(ticker, calculate_iv=True, call=True, put=False,
             S = underlying
             K = strike
             t = time_to_expiration
-            r = rf_interest_rate
-            q = dividend_rate
+            r = rf_interest_rate/100
+            q = dividend_rate/100
             try:
                 sigma = implied_volatility(P, S, K, t, r, q, flag)
                 sigmas.append(sigma)
@@ -106,4 +113,3 @@ def get_volatility_matrix(ticker, calculate_iv=True, call=True, put=False,
         ivs = np.array(sigmas)
 
     return strikes, plotting, ivs
-    print('Done')
