@@ -11,6 +11,7 @@ from dash.dependencies import Input, Output, State
 import dash_core_components as dcc
 import dash_html_components as html
 
+from tickers import tickers
 from data_fetcher import get_time_delta, get_raw_data, get_filtered_data
 
 
@@ -32,65 +33,6 @@ if 'DYNO' in os.environ:
 
 
 # Tickers
-sp500 = ['AAPL', 'ABT', 'ABBV', 'ACN', 'ACE', 'ADBE', 'ADT', 'AAP', 'AES',
-         'AET', 'AFL', 'AMG', 'A', 'GAS', 'ARE', 'APD', 'AKAM', 'AA', 'AGN',
-         'ALXN', 'ALLE', 'ADS', 'ALL', 'ALTR', 'MO', 'AMZN', 'AEE', 'AAL',
-         'AEP', 'AXP', 'AIG', 'AMT', 'AMP', 'ABC', 'AME', 'AMGN', 'APH', 'APC',
-         'ADI', 'AON', 'APA', 'AIV', 'AMAT', 'ADM', 'AIZ', 'T', 'ADSK', 'ADP',
-         'AN', 'AZO', 'AVGO', 'AVB', 'AVY', 'BHI', 'BLL', 'BAC', 'BK', 'BCR',
-         'BXLT', 'BAX', 'BBT', 'BDX', 'BBBY', 'BRK.B', 'BBY', 'BLX', 'HRB',
-         'BA', 'BWA', 'BXP', 'BSX', 'BMY', 'BRCM', 'BF.B', 'CHRW', 'CA',
-         'CVC', 'COG', 'CAM', 'CPB', 'COF', 'CAH', 'HSIC', 'KMX', 'CCL',
-         'CAT', 'CBG', 'CBS', 'CELG', 'CNP', 'CTL', 'CERN', 'CF', 'SCHW',
-         'CHK', 'CVX', 'CMG', 'CB', 'CI', 'XEC', 'CINF', 'CTAS', 'CSCO', 'C',
-         'CTXS', 'CLX', 'CME', 'CMS', 'COH', 'KO', 'CCE', 'CTSH', 'CL',
-         'CMCSA', 'CMA', 'CSC', 'CAG', 'COP', 'CNX', 'ED', 'STZ', 'GLW',
-         'COST', 'CCI', 'CSX', 'CMI', 'CVS', 'DHI', 'DHR', 'DRI', 'DVA',
-         'DE', 'DLPH', 'DAL', 'XRAY', 'DVN', 'DO', 'DTV', 'DFS', 'DISCA',
-         'DISCK', 'DG', 'DLTR', 'D', 'DOV', 'DOW', 'DPS', 'DTE', 'DD', 'DUK',
-         'DNB', 'ETFC', 'EMN', 'ETN', 'EBAY', 'ECL', 'EIX', 'EW', 'EA',
-         'EMC', 'EMR', 'ENDP', 'ESV', 'ETR', 'EOG', 'EQT', 'EFX', 'EQIX',
-         'EQR', 'ESS', 'EL', 'ES', 'EXC', 'EXPE', 'EXPD', 'ESRX', 'XOM',
-         'FFIV', 'FB', 'FAST', 'FDX', 'FIS', 'FITB', 'FSLR', 'FE', 'FISV',
-         'FLIR', 'FLS', 'FLR', 'FMC', 'FTI', 'F', 'FOSL', 'BEN', 'FCX',
-         'FTR', 'GME', 'GPS', 'GRMN', 'GD', 'GE', 'GGP', 'GIS', 'GM',
-         'GPC', 'GNW', 'GILD', 'GS', 'GT', 'GOOGL', 'GOOG', 'GWW', 'HAL',
-         'HBI', 'HOG', 'HAR', 'HRS', 'HIG', 'HAS', 'HCA', 'HCP', 'HCN',
-         'HP', 'HES', 'HPQ', 'HD', 'HON', 'HRL', 'HSP', 'HST', 'HCBK',
-         'HUM', 'HBAN', 'ITW', 'IR', 'INTC', 'ICE', 'IBM', 'IP', 'IPG',
-         'IFF', 'INTU', 'ISRG', 'IVZ', 'IRM', 'JEC', 'JBHT', 'JNJ',
-         'JCI', 'JOY', 'JPM', 'JNPR', 'KSU', 'K', 'KEY', 'GMCR', 'KMB',
-         'KIM', 'KMI', 'KLAC', 'KSS', 'KRFT', 'KR', 'LB', 'LLL', 'LH',
-         'LRCX', 'LM', 'LEG', 'LEN', 'LVLT', 'LUK', 'LLY', 'LNC', 'LLTC',
-         'LMT', 'L', 'LOW', 'LYB', 'MTB', 'MAC', 'M', 'MNK', 'MRO', 'MPC',
-         'MAR', 'MMC', 'MLM', 'MAS', 'MA', 'MAT', 'MKC', 'MCD', 'MCK',
-         'MJN', 'MMV', 'MDT', 'MRK', 'MET', 'KORS', 'MCHP', 'MU', 'MSFT',
-         'MHK', 'TAP', 'MDLZ', 'MON', 'MNST', 'MCO', 'MS', 'MOS', 'MSI',
-         'MUR', 'MYL', 'NDAQ', 'NOV', 'NAVI', 'NTAP', 'NFLX', 'NWL',
-         'NFX', 'NEM', 'NWSA', 'NEE', 'NLSN', 'NKE', 'NI', 'NE', 'NBL',
-         'JWN', 'NSC', 'NTRS', 'NOC', 'NRG', 'NUE', 'NVDA', 'ORLY',
-         'OXY', 'OMC', 'OKE', 'ORCL', 'OI', 'PCAR', 'PLL', 'PH', 'PDCO',
-         'PAYX', 'PNR', 'PBCT', 'POM', 'PEP', 'PKI', 'PRGO', 'PFE',
-         'PCG', 'PM', 'PSX', 'PNW', 'PXD', 'PBI', 'PCL', 'PNC', 'RL',
-         'PPG', 'PPL', 'PX', 'PCP', 'PCLN', 'PFG', 'PG', 'PGR', 'PLD',
-         'PRU', 'PEG', 'PSA', 'PHM', 'PVH', 'QRVO', 'PWR', 'QCOM',
-         'DGX', 'RRC', 'RTN', 'O', 'RHT', 'REGN', 'RF', 'RSG', 'RAI',
-         'RHI', 'ROK', 'COL', 'ROP', 'ROST', 'RLD', 'R', 'CRM', 'SNDK',
-         'SCG', 'SLB', 'SNI', 'STX', 'SEE', 'SRE', 'SHW', 'SPG', 'SWKS',
-         'SLG', 'SJM', 'SNA', 'SO', 'LUV', 'SWN', 'SE', 'STJ', 'SWK',
-         'SPLS', 'SBUX', 'HOT', 'STT', 'SRCL', 'SYK', 'STI', 'SYMC', 'SYY',
-         'TROW', 'TGT', 'TEL', 'TE', 'TGNA', 'THC', 'TDC', 'TSO', 'TXN',
-         'TXT', 'HSY', 'TRV', 'TMO', 'TIF', 'TWX', 'TWC', 'TJX', 'TMK',
-         'TSS', 'TSCO', 'RIG', 'TRIP', 'FOXA', 'TSN', 'TYC', 'UA',
-         'UNP', 'UNH', 'UPS', 'URI', 'UTX', 'UHS', 'UNM', 'URBN', 'VFC',
-         'VLO', 'VAR', 'VTR', 'VRSN', 'VZ', 'VRTX', 'VIAB', 'V', 'VNO',
-         'VMC', 'WMT', 'WBA', 'DIS', 'WM', 'WAT', 'ANTM', 'WFC', 'WDC',
-         'WU', 'WY', 'WHR', 'WFM', 'WMB', 'WEC', 'WYN', 'WYNN', 'XEL',
-         'XRX', 'XLNX', 'XL', 'XYL', 'YHOO', 'YUM', 'ZBH', 'ZION', 'ZTS']
-
-etf = ['SPY', 'XLF', 'GDX', 'EEM', 'VXX', 'IWM', 'UVXY', 'UXO', 'GDXJ', 'QQQ']
-
-tickers = sp500 + etf
 tickers = [dict(label=str(ticker), value=str(ticker))
            for ticker in tickers]
 
@@ -99,13 +41,24 @@ tickers = [dict(label=str(ticker), value=str(ticker))
 app.layout = html.Div(
     [
         html.Div([
+            html.Img(
+                src="https://datashop.cboe.com/Themes/Livevol/Content/images/logo.png",
+                className='two columns',
+                style={
+                    'height': '60',
+                    'width': '160',
+                    'float': 'left',
+                    'position': 'relative',
+                },
+            ),
             html.H1(
                 'Volatility Surface Explorer',
                 className='eight columns',
+                style={'text-align': 'center'}
             ),
             html.Img(
                 src="https://s3-us-west-1.amazonaws.com/plotly-tutorials/logo/new-branding/dash-logo-by-plotly-stripe.png",
-                className='one columns',
+                className='two columns',
                 style={
                     'height': '60',
                     'width': '135',
@@ -239,8 +192,8 @@ app.layout = html.Div(
                 dcc.RadioItems(
                     id='log_selector',
                     options=[
-                        {'label': 'Log', 'value': 'log'},
-                        {'label': 'Linear', 'value': 'linear'},
+                        {'label': 'Log surface', 'value': 'log'},
+                        {'label': 'Linear surface', 'value': 'linear'},
                     ],
                     value='log',
                     labelStyle={'display': 'inline-block'}
@@ -250,9 +203,10 @@ app.layout = html.Div(
                     options=[
                         {'label': 'Flat shading', 'value': 'flat'},
                         {'label': 'Discrete contour', 'value': 'discrete'},
+                        {'label': 'Error bars', 'value': 'box'},
                         {'label': 'Lock camera', 'value': 'lock'}
                     ],
-                    values=['flat', 'lock'],
+                    values=['flat', 'box', 'lock'],
                     labelStyle={'display': 'inline-block'}
                 )
             ],
@@ -261,7 +215,6 @@ app.layout = html.Div(
         ],
             className='row'
         ),
-        html.Hr(style={'margin': '0', 'margin-bottom': '10'}),
         html.Div([
             dcc.Graph(id='iv_surface', style={'max-height': '600', 'height': '60vh'}),
         ],
@@ -427,7 +380,7 @@ def make_surface_plot(hidden, ticker, log_selector, graph_toggles,
                 'camera': {
                     'up': {'x': 0, 'y': 0, 'z': 1},
                     'center': {'x': 0, 'y': 0, 'z': 0},
-                    'eye': {'x': 2, 'y': 2, 'z': 2},
+                    'eye': {'x': 1, 'y': 1, 'z': 0.5},
                 },
                 "xaxis": {
                     "title": "Strike ($)",
@@ -444,12 +397,16 @@ def make_surface_plot(hidden, ticker, log_selector, graph_toggles,
         }
 
         if (iv_surface_layout is not None and 'lock' in graph_toggles_state):
-            up = iv_surface_layout['scene']['up']
-            center = iv_surface_layout['scene']['center']
-            eye = iv_surface_layout['scene']['eye']
-            layout['scene']['camera']['up'] = up
-            layout['scene']['camera']['center'] = center
-            layout['scene']['camera']['eye'] = eye
+
+            try:
+                up = iv_surface_layout['scene']['up']
+                center = iv_surface_layout['scene']['center']
+                eye = iv_surface_layout['scene']['eye']
+                layout['scene']['camera']['up'] = up
+                layout['scene']['camera']['center'] = center
+                layout['scene']['camera']['eye'] = eye
+            except:
+                pass
 
         data = [trace1]
         figure = dict(data=data, layout=layout)
@@ -460,11 +417,10 @@ def make_surface_plot(hidden, ticker, log_selector, graph_toggles,
 @app.callback(Output('iv_heatmap', 'figure'),
               [Input('filtered_container', 'hidden'),
                Input('ticker_dropdown', 'value'),
-               Input('log_selector', 'value'),
                Input('graph_toggles', 'values')],
               [State('graph_toggles', 'values'),
                State('iv_heatmap', 'relayoutData')])
-def make_surface_plot(hidden, ticker, log_selector, graph_toggles,
+def make_surface_plot(hidden, ticker, graph_toggles,
                       graph_toggles_state, iv_heatmap_layout):
 
     if hidden == 'loaded':
@@ -484,8 +440,8 @@ def make_surface_plot(hidden, ticker, log_selector, graph_toggles,
             'contours': {'coloring': shading},
             'autocolorscale': False,
             "colorscale": [
-                [0, "rgb(244,236,21)"], [0.3, "rgb(249,210,41)"], [0.4, "rgb(134,191,118)"], [
-                    0.5, "rgb(37,180,167)"], [0.65, "rgb(17,123,215)"], [1, "rgb(54,50,153)"],
+                [0, "rgb(244,236,21)"], [0.3, "rgb(249,210,41)"], [0.4, "rgb(134,191,118)"],
+                [0.5, "rgb(37,180,167)"], [0.65, "rgb(17,123,215)"], [1, "rgb(54,50,153)"],
             ],
             # Add colorscale log
             "reversescale": True,
@@ -501,20 +457,30 @@ def make_surface_plot(hidden, ticker, log_selector, graph_toggles,
             'paper_bgcolor': '#FAFAFA',
             "hovermode": "closest",
             "xaxis": {
+                'range': [],
                 "title": "Strike ($)",
             },
             "yaxis": {
+                'range': [],
                 "title": "Expiry (days)",
             },
         }
 
-        # if (iv_heatmap_layout is not None and 'lock' in graph_toggles_state):
-        #     up = iv_surface_layout['scene']['up']
-        #     center = iv_surface_layout['scene']['center']
-        #     eye = iv_surface_layout['scene']['eye']
-        #     layout['scene']['camera']['up'] = up
-        #     layout['scene']['camera']['center'] = center
-        #     layout['scene']['camera']['eye'] = eye
+        if (iv_heatmap_layout is not None and 'lock' in graph_toggles_state):
+
+            try:
+                x_range_left = iv_heatmap_layout['xaxis.range[0]']
+                x_range_right = iv_heatmap_layout['xaxis.range[1]']
+                layout['xaxis']['range'] = [x_range_left, x_range_right]
+            except:
+                pass
+
+            try:
+                y_range_left = iv_heatmap_layout['yaxis.range[0]']
+                y_range_right = iv_heatmap_layout['yaxis.range[1]']
+                layout['yaxis']['range'] = [x_range_left, x_range_right]
+            except:
+                pass
 
         data = [trace1]
         figure = dict(data=data, layout=layout)
@@ -525,12 +491,11 @@ def make_surface_plot(hidden, ticker, log_selector, graph_toggles,
 @app.callback(Output('iv_scatter', 'figure'),
               [Input('filtered_container', 'hidden'),
                Input('ticker_dropdown', 'value'),
-               Input('log_selector', 'value'),
                Input('graph_toggles', 'values')],
               [State('graph_toggles', 'values'),
                State('iv_scatter', 'relayoutData')])
-def make_scatter_plot(hidden, ticker, log_selector, graph_toggles,
-                      graph_toggles_state, iv_heatmap_layout):
+def make_scatter_plot(hidden, ticker, graph_toggles,
+                      graph_toggles_state, iv_scatter_layout):
 
     if hidden == 'loaded':
 
@@ -539,21 +504,18 @@ def make_scatter_plot(hidden, ticker, log_selector, graph_toggles,
         else:
             shading = 'heatmap'
 
+        if 'box' in graph_toggles:
+            typ = 'box'
+        else:
+            typ = 'scatter'
+
         trace1 = {
+            "type": typ,
+            'mode': 'markers',
             'x': filtered_data[1],
             'y': filtered_data[2],
-            # 'connectgaps': True,
-            # 'line': {'smoothing': '1'},
-            # 'contours': {'coloring': shading},
-            # 'autocolorscale': False,
-            # "colorscale": [
-            #     [0, "rgb(244,236,21)"], [0.3, "rgb(249,210,41)"], [0.4, "rgb(134,191,118)"], [
-            #         0.5, "rgb(37,180,167)"], [0.65, "rgb(17,123,215)"], [1, "rgb(54,50,153)"],
-            # ],
-            # # Add colorscale log
-            # "reversescale": True,
-            'mode': 'markers',
-            "type": "scatter",
+            'boxpoints': 'outliers',
+            'marker': {'color': '#32399F', 'opacity': 0.2}
         }
 
         layout = {
@@ -574,13 +536,21 @@ def make_scatter_plot(hidden, ticker, log_selector, graph_toggles,
             },
         }
 
-        # if (iv_heatmap_layout is not None and 'lock' in graph_toggles_state):
-        #     up = iv_surface_layout['scene']['up']
-        #     center = iv_surface_layout['scene']['center']
-        #     eye = iv_surface_layout['scene']['eye']
-        #     layout['scene']['camera']['up'] = up
-        #     layout['scene']['camera']['center'] = center
-        #     layout['scene']['camera']['eye'] = eye
+        if (iv_scatter_layout is not None and 'lock' in graph_toggles_state):
+
+            try:
+                x_range_left = iv_scatter_layout['xaxis.range[0]']
+                x_range_right = iv_scatter_layout['xaxis.range[1]']
+                layout['xaxis']['range'] = [x_range_left, x_range_right]
+            except:
+                pass
+
+            try:
+                y_range_left = iv_scatter_layout['yaxis.range[0]']
+                y_range_right = iv_scatter_layout['yaxis.range[1]']
+                layout['yaxis']['range'] = [x_range_left, x_range_right]
+            except:
+                pass
 
         data = [trace1]
         figure = dict(data=data, layout=layout)

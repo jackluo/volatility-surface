@@ -77,7 +77,7 @@ def get_filtered_data(data, calculate_iv=True, call=True, put=False,
         premiums = df['Bid']
 
     if not market:
-        premiums = df['Last'] # Last executed price vs Bid/Ask price
+        premiums = df['Last']  # Last executed price vs Bid/Ask price
 
     strikes = df.index.get_level_values('Strike').values
     expiries = df.index.get_level_values('Expiry').to_pydatetime()
@@ -85,8 +85,9 @@ def get_filtered_data(data, calculate_iv=True, call=True, put=False,
     ), expiries, trading_calendar)  # Can get slow if too many expiries
     ivs = df['IV'].values
 
+    # Make sure nothing thows up
     assert len(premiums) == len(strikes)
-    assert len(strikes) == len(time_to_expirations)  # Make sure nothing thows up
+    assert len(strikes) == len(time_to_expirations)
 
     if calculate_iv:
 
@@ -98,8 +99,8 @@ def get_filtered_data(data, calculate_iv=True, call=True, put=False,
             S = underlying
             K = strike
             t = time_to_expiration
-            r = rf_interest_rate/100
-            q = dividend_rate/100
+            r = rf_interest_rate / 100
+            q = dividend_rate / 100
             try:
                 sigma = implied_volatility(P, S, K, t, r, q, flag)
                 sigmas.append(sigma)
