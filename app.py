@@ -384,14 +384,26 @@ def make_surface_plot(hidden, ticker, log_selector, graph_toggles,
                 },
                 "xaxis": {
                     "title": "Strike ($)",
+                    "showbackground": True,
+                    "backgroundcolor": "rgb(230, 230,230)",
+                    "gridcolor": "rgb(255, 255, 255)",
+                    "zerolinecolor": "rgb(255, 255, 255)"
                 },
                 "yaxis": {
                     "title": "Expiry (days)",
+                    "showbackground": True,
+                    "backgroundcolor": "rgb(230, 230,230)",
+                    "gridcolor": "rgb(255, 255, 255)",
+                    "zerolinecolor": "rgb(255, 255, 255)"
                 },
                 "zaxis": {
                     "rangemode": "tozero",
                     "title": "IV (σ)",
-                    "type": log_selector
+                    "type": log_selector,
+                    "showbackground": True,
+                    "backgroundcolor": "rgb(230, 230,230)",
+                    "gridcolor": "rgb(255, 255, 255)",
+                    "zerolinecolor": "rgb(255, 255, 255)"
                 }
             },
         }
